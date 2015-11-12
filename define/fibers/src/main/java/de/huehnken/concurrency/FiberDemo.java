@@ -19,25 +19,35 @@ import java.util.concurrent.ConcurrentHashMap;
 
 class FiberDemo {
 
-    private Map<String, String> store = new ConcurrentHashMap<>();
+    /* The store hash table is shared mutable state! */
+    private final Map<String, String> store = new ConcurrentHashMap<>();
     private final Map<String, String> sources;
-    private final String searchTerm = "Nerd";
 
     public FiberDemo() throws MalformedURLException {
         Config conf = ConfigFactory.load();
-        String merriamWebsterApiKey = conf.getString("mw.key");
+        final String merriamWebsterApiKey = conf.getString("mw.key");
         sources = new HashMap<>();
         sources.put("Merriam Webster", "http://www.dictionaryapi.com/api/v1/references/collegiate/xml/{0}?key=" + merriamWebsterApiKey);
         sources.put("Wiktionary", "https://en.wiktionary.org/w/api.php?format=xml&action=query&rvprop=content&prop=revisions&redirects=1&titles={0}");
         sources.put("Urban Dictionary", "http://api.urbandictionary.com/v0/define?term={0}");
 
+    }
+
+    public void define(final String searchTerm) {
         for (String currentKey : sources.keySet()) {
             new RetrieveInfo(currentKey, sources.get(currentKey), searchTerm).start();
         }
-
-
     }
 
+    /**
+     * Here we access the shared "store" hash map.
+     * Since it's a concurrent hash map, and we don't have other shared state,
+     * we refrain from making it "synchronized" - but if you where to use non thread-safe
+     * structures, you'd have to.
+     * This method is working on shared mutual state - this is what we look to avoid!
+     * @param key
+     * @param result
+     */
     void addResult(final String key, final String result) {
         store.put(key, result);
         if (store.size() == sources.size()) {
@@ -78,7 +88,7 @@ class FiberDemo {
 
 
     public static void main(String[] argv) throws Exception {
-        new FiberDemo();
+        new FiberDemo().define("Nerd");
     }
 
 }
