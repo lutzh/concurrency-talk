@@ -6,10 +6,12 @@
 
 (def responses-channel (chan 10))
 
-(go 
-  (println "========================")
-  (println (take 2 responses-channel))
-  (println "========================"))
+(go
+  (println
+   (loop [values []]
+     (if (= 2 (count values))
+       values
+       (recur (conj values (<! responses-channel)))))))
 
 (defn async-get [url result]
   (http/get url #(go (>! result (:body %)))))
